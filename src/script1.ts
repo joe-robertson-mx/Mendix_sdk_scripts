@@ -5,12 +5,12 @@ import when = require("when");
 // Configuration
 const config = {
     auth: {
-        "username": "",
-        "apikey": ""
+        "username": "joe.robertson@first-consulting.co.uk",
+        "apikey": "de41dd96-aeff-4249-b6fb-fc750005e9fa"
     },
     project: {
-        "name": "",
-        "id": ""
+        "name": "FMO_ReferenceDataManagement",
+        "id": "6d2c07d6-808f-4b21-bc81-1d35c041a7ff"
     }
 }
 

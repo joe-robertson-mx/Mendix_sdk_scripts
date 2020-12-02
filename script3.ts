@@ -22,18 +22,18 @@ const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
 let changes = 0;
 
 async function main() {
-    const project = new Project(client, config.project.id, config.project.name)
-    const revision = new Revision(-1, new Branch(project, config.project.branch)); // always use the latest revision
-
-    const workingCopy = await project.createWorkingCopy(revision);
+    const project = new Project(client, config.project.id, config.project.name);
+    const workingCopy = await project.createWorkingCopy();
     processAllMicroflows(workingCopy);
 }
 
 function processMF(mf: microflows.Microflow, workingCopy: OnlineWorkingCopy) {
     // Loop through all Microflow objects that are Microflow activities
-    mf.objectCollection.objects.filter(mfaction => mfaction.structureTypeName == 'Microflows$ActionActivity')
+    mf.objectCollection.objects.filter(mfaction => mfaction.structureTypeName == 'Microflows$ActionActivity') //Change this to the text types that we want to change.
         .forEach(mfaction => {
             // We only want ActionActivities here because the others don't have a background colour
+
+
             if (mfaction instanceof microflows.ActionActivity) {
                 // Get the action of the Activity to determine it's nature
                 const activity = <microflows.ActionActivity>mfaction;
