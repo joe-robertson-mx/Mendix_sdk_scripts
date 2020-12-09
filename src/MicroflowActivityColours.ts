@@ -1,19 +1,7 @@
-import { MendixSdkClient, OnlineWorkingCopy, Project, loadAsPromise } from 'mendixplatformsdk';
+import { MendixSdkClient, OnlineWorkingCopy, Project, loadAsPromise, Revision, Branch } from 'mendixplatformsdk';
 import { microflows } from 'mendixmodelsdk';
+import { eServices as config} from '../config' 
 import when = require("when");
-
-// Configuration
-const config = {
-    auth: {
-        "username": "joe.robertson@first-consulting.co.uk",
-        "apikey": "de41dd96-aeff-4249-b6fb-fc750005e9fa"
-    },
-    project: {
-        "name": "FMO_ReferenceDataManagement",
-        "id": "6d2c07d6-808f-4b21-bc81-1d35c041a7ff",
-        "branch": "branchScriptTests"
-    }
-}
 
 // Use with to get an SDK client
 const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
@@ -22,18 +10,20 @@ const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
 let changes = 0;
 
 async function main() {
-    const project = new Project(client, config.project.id, config.project.name);
-    const workingCopy = await project.createWorkingCopy();
-    processAllMicroflows(workingCopy);
+    const project = new Project(client, config.project.id, config.project.name)
+    const branch = new Branch(project, config.project.branch)
+    console.log (branch)
+    const revision = new Revision(-1, branch); // always use the latest revision
+
+    const workingCopy: OnlineWorkingCopy = await project.createWorkingCopy(revision);
+    await processAllMicroflows(workingCopy);
 }
 
 function processMF(mf: microflows.Microflow, workingCopy: OnlineWorkingCopy) {
     // Loop through all Microflow objects that are Microflow activities
-    mf.objectCollection.objects.filter(mfaction => mfaction.structureTypeName == 'Microflows$ActionActivity') //Change this to the text types that we want to change.
+    mf.objectCollection.objects.filter(mfaction => mfaction.structureTypeName == 'Microflows$ActionActivity')
         .forEach(mfaction => {
             // We only want ActionActivities here because the others don't have a background colour
-
-
             if (mfaction instanceof microflows.ActionActivity) {
                 // Get the action of the Activity to determine it's nature
                 const activity = <microflows.ActionActivity>mfaction;

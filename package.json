@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "start": "tsc && node build/GetModelStructure.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mxcrawford/sdk-examples.git"
@@ -17,8 +19,11 @@
   "homepage": "https://github.com/mxcrawford/sdk-examples#readme",
   "dependencies": {
     "@types/when": "^2.4.33",
-    "mendixmodelsdk": "^4.25.0",
+    "mendixmodelsdk": "^4.44.0",
     "mendixplatformsdk": "^4.1.1",
     "when": "^3.7.8"
+  },
+  "devDependencies": {
+    "@types/node": "^10.17.5"
   }
 }
