@@ -3,9 +3,8 @@ import {JavaScriptSerializer, StructuralUnit, IStructuralUnit, projects, constan
         javaactions, pages, microflows, enumerations, exportmappings, importmappings,
         scheduledevents, xmlschemas, domainmodels, images, jsonstructures, security} from 'mendixmodelsdk/dist';
 import when = require('when');
-import {eServices as config} from '../config'
-import fs = require('fs');
-import { domain } from 'process';
+import {eServices as config} from '../config' // Change this to change project
+import fs = require('fs');;
 var path = require('path');
 
 const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
@@ -21,7 +20,7 @@ async function serialize(){
         fs.mkdirSync(basePath);    
     }
 
-    const mfName = 'Sub_CreateLog'
+    const mfName = 'Sub_CreateLog' //Change this to export different microflows
 
     await exportMicroflow (wc, basePath, mfName)
 }
@@ -39,79 +38,13 @@ async function exportMicroflow(wc : OnlineWorkingCopy, filePath : string, mfName
                 return false
         })
 
-
-        //filteredDocs = desiredDocs.filter(dm => {             
-//         for (var i = 0; i < moduleNames.length; i++) {
-//             if(dm.containerAsModule.name === moduleNames[i]){
-//                 return true;
-//             }
-//         }
-//         return false;                
-//     });
-    console.log(`--> Module Documents`);
-
     for (const mf of filteredMF) {
-
         const loadedDocument = await loadAsPromise<microflows.IMicroflow>(mf);
         var filepath = getSanitisedAndUniqueFilePath (filePath, loadedDocument.name, '_')
         const serialised = JavaScriptSerializer.serializeToJs(loadedDocument);
         fs.writeFileSync(filepath,serialised );
     }
-    console.log(`<-- Module Documents`);
-}
-
-function getContainingModuleName(container : IStructuralUnit) : string{
-    if(container.structureTypeName === "Projects$Folder"){
-        return getContainingModuleName(container.container)
-    }
-    else {
-        return (container as projects.Module).name
-    }    
-}
-
-
-function getModuleDocumentName(document : projects.ModuleDocument) : string {
-    switch(document.structureTypeName){
-        case "Constants$Constant":
-            return (document as constants.Constant).name;
-        case "JavaActions$JavaAction":
-                return (document as javaactions.JavaAction).name;
-        case "Pages$BuildingBlock":
-                return (document as pages.BuildingBlock).name;
-        case "Pages$Layout":
-                return (document as pages.Layout).name;
-        case "Pages$Page":
-                return (document as pages.Page).name;
-        case "Pages$Snippet":
-                return (document as pages.Snippet).name;   
-        case "Pages$PageTemplate":
-                return (document as pages.PageTemplate).name;             
-        case "Microflows$Nanoflow":
-                return (document as microflows.Nanoflow).name;               
-        case "Microflows$Rule":
-                return (document as microflows.Rule).name;             
-        case "Microflows$Microflow":
-                return (document as microflows.Microflow).name;             
-        case "Enumerations$Enumeration":
-                return (document as enumerations.Enumeration).name;               
-        case "ImportMappings$ImportMapping":
-                return (document as importmappings.ImportMapping).name;               
-        case "ExportMappings$ExportMapping":
-                return (document as exportmappings.ExportMapping).name;             
-        case "ScheduledEvents$ScheduledEvent":
-                return (document as scheduledevents.ScheduledEvent).name;           
-        case "XmlSchemas$XmlSchema":
-                return (document as xmlschemas.XmlSchema).name;                    
-        case "Images$ImageCollection":
-                return (document as images.ImageCollection).name;                    
-        case "JsonStructures$JsonStructure":
-                return (document as jsonstructures.JsonStructure).name;          
-        case "DomainModels$DomainModel":
-                return `__Domain Model__`;
-        default:
-            console.log(`Structure Type ${document.structureTypeName} not yet handled in getModuleDocumentName. Using Document ID for name.`);
-            return document.id;
-    }
+    console.log(`Microflow exported`);
 }
     
 function getSanitisedAndUniqueFilePath(basePath : string, filename : string | null, replaceValue : string, attempt : number = 1) : string {
