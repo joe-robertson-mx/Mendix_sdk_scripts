@@ -3,7 +3,7 @@ import {JavaScriptSerializer, StructuralUnit, IStructuralUnit, projects, constan
         javaactions, pages, microflows, enumerations, exportmappings, importmappings,
         scheduledevents, xmlschemas, domainmodels, images, jsonstructures, security} from 'mendixmodelsdk/dist';
 import when = require('when');
-import {OpenAsset as config} from '../config'
+import {eServices as config} from '../config'
 import fs = require('fs');
 import { domain } from 'process';
 var path = require('path');
@@ -21,80 +21,44 @@ async function serialize(){
         fs.mkdirSync(basePath);    
     }
 
-    // check for project folder
-    const projectName = wc.project().name();
-    const projectPath = path.join(basePath, projectName);
+    const mfName = 'Sub_CreateLog'
 
-    if( fs.existsSync(projectPath)){
-        console.log(`Project output folder ${projectPath} already exists. Please delete the project output folder and try again`);
-        return;    
-    }
-
-    fs.mkdirSync(projectPath);
-    await exportDomainModel(wc, projectPath);
+    await exportMicroflow (wc, basePath, mfName)
 }
 
 serialize();
 
-async function exportDomainModel (wc : OnlineWorkingCopy, projectPath : string){ 
-    const domainmodels = wc.model().allDomainModels();
 
-    for (const domainmodel of domainmodels) {
-        const loadedDomainModel = await loadAsPromise <domainmodels.IDomainModel>(domainmodel)
-        console.log (loadedDomainModel)
-        const properties = loadedDomainModel.toJSON()
-        const moduleName = loadedDomainModel.containerAsModule.name
-        const entity = loadedDomainModel.entities
-        // console.log (properties)
-        // console.log (moduleName)
-        console.log (entity)
-        break
-        // const serialised = JavaScriptSerializer.serializeToJs(loadedDomainModel);
-        // console.log (serialised)
-    }
-}
+async function exportMicroflow(wc : OnlineWorkingCopy, filePath : string, mfName:string){
 
-// async function exportModuleSecurities(wc : OnlineWorkingCopy, projectPath : string){
-//     const securities = wc.model().allModuleSecurities();
+    const mfs = wc.model().allMicroflows()
+        const filteredMF = mfs.filter (mf => {
+                if (mf.name === mfName) {
+                        return true
+                }
+                return false
+        })
 
-//     console.log(`--> Module Security`);
-//     for(const security of securities){
-//         const loadedSecurity = await loadAsPromise<security.IModuleSecurity>(security);     
-//         const moduleName = loadedSecurity.containerAsModule.name;
-//         const modulePath = path.join(projectPath, moduleName);
-//         if( !fs.existsSync(modulePath)){
-//             fs.mkdirSync(modulePath);
+
+        //filteredDocs = desiredDocs.filter(dm => {             
+//         for (var i = 0; i < moduleNames.length; i++) {
+//             if(dm.containerAsModule.name === moduleNames[i]){
+//                 return true;
+//             }
 //         }
-//         console.log(`\t ${moduleName}`);
-//         const serialised = JavaScriptSerializer.serializeToJs(loadedSecurity);
-    
-//         var filepath = getSanitisedAndUniqueFilePath(modulePath, `__Security__`,'_');
-//         fs.writeFileSync(filepath,serialised );
-//     }
-//     console.log(`<-- Module Security`);
-// }
+//         return false;                
+//     });
+    console.log(`--> Module Documents`);
 
-// async function exportModuleDocuments(wc : OnlineWorkingCopy, projectPath : string){
-//     const documents = wc.model().allModuleDocuments();
-//     console.log(`--> Module Documents`);
-//     for(const document of documents){
-//         const moduleName = getContainingModuleName(document.container);
-//         const modulePath = path.join(projectPath, moduleName);
-//         if( !fs.existsSync(modulePath)){
-//             fs.mkdirSync(modulePath);
-//         }        
+    for (const mf of filteredMF) {
 
-//         const loadedDocument = await loadAsPromise<projects.ModuleDocument>(document);
-//         const serialised = JavaScriptSerializer.serializeToJs(loadedDocument);
-        
-//         const documentName = getModuleDocumentName(loadedDocument);
-//         console.log(`\t ${moduleName}.${documentName}`);
-
-//         var filepath = getSanitisedAndUniqueFilePath(modulePath, `${documentName}`,'_');
-//         fs.writeFileSync(filepath,serialised );
-//     }
-//     console.log(`<-- Module Documents`);
-// }
+        const loadedDocument = await loadAsPromise<microflows.IMicroflow>(mf);
+        var filepath = getSanitisedAndUniqueFilePath (filePath, loadedDocument.name, '_')
+        const serialised = JavaScriptSerializer.serializeToJs(loadedDocument);
+        fs.writeFileSync(filepath,serialised );
+    }
+    console.log(`<-- Module Documents`);
+}
 
 function getContainingModuleName(container : IStructuralUnit) : string{
     if(container.structureTypeName === "Projects$Folder"){
@@ -104,6 +68,7 @@ function getContainingModuleName(container : IStructuralUnit) : string{
         return (container as projects.Module).name
     }    
 }
+
 
 function getModuleDocumentName(document : projects.ModuleDocument) : string {
     switch(document.structureTypeName){

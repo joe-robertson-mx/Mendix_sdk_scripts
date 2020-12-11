@@ -1,6 +1,6 @@
 import { MendixSdkClient, OnlineWorkingCopy, Project, loadAsPromise, Revision, Branch } from 'mendixplatformsdk';
 import { microflows } from 'mendixmodelsdk';
-import { eServices as config} from '../config' 
+import { DemoApplication as config} from '../config' 
 import when = require("when");
 
 // Use with to get an SDK client
@@ -18,6 +18,7 @@ async function main() {
     const workingCopy: OnlineWorkingCopy = await project.createWorkingCopy(revision);
     await processAllMicroflows(workingCopy);
 }
+
 
 function processMF(mf: microflows.Microflow, workingCopy: OnlineWorkingCopy) {
     // Loop through all Microflow objects that are Microflow activities
