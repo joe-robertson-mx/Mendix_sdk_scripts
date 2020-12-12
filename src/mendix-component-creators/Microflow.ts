@@ -1,4 +1,4 @@
-import {IModel, projects, microflows, datatypes, texts, domainmodels} from "mendixmodelsdk/dist"
+import {IModel, projects, pages, microflows, datatypes, texts, domainmodels} from "mendixmodelsdk/dist"
 
 export class Microflow {
 	private _model: IModel;
@@ -154,6 +154,56 @@ export class Microflow {
 		validationFeedbackActivity.action = validationFeedbackAction;		
 		
 		return validationFeedbackActivity;
+	}
+
+	generateLoggingPageMicroflowCall (pageName:string): microflows.ActionActivity {
+		
+		//Microflow call
+		var microflowCall = microflows.MicroflowCall.create(this._model);
+		microflowCall.microflow = this._model.findMicroflowByQualifiedName("CustomLogging.Sub_CreateLog");
+
+		//Parameters
+		var LoggingResultParameter = microflows.MicroflowCallParameterMapping.create(this._model);
+		LoggingResultParameter.argument = "CustomLogging.Enum_LoggingResult.Success";
+
+		var EventTypeParameter = microflows.MicroflowCallParameterMapping.create(this._model);
+		EventTypeParameter.argument = "CustomLogging.Enum_EventType.Page_access";
+
+		var LogNodeNameParameter = microflows.MicroflowCallParameterMapping.create(this._model);
+		LogNodeNameParameter.argument = `${pageName} accessed`
+
+		var LoggingLevelParameter = microflows.MicroflowCallParameterMapping.create(this._model);
+		LoggingLevelParameter.argument = "CustomLogging.Enum_LoggingLevel.Info";
+
+		microflowCall.parameterMappings.push(LoggingResultParameter);
+		microflowCall.parameterMappings.push(EventTypeParameter);
+		microflowCall.parameterMappings.push(LogNodeNameParameter);
+		microflowCall.parameterMappings.push(LoggingLevelParameter);
+
+		//Create the action
+		var microflowCallAction = microflows.MicroflowCallAction.create(this._model);
+		microflowCallAction.microflowCall = microflowCall;   // Note: for this property a default value is defined.
+		microflowCallAction.useReturnVariable = true;
+
+		let microflowCallActionActivity = microflows.ActionActivity.create(this._model);
+		microflowCallActionActivity.action = microflowCallAction;	
+
+		return microflowCallActionActivity
+
+	}
+
+	generatePageOpenCall (pageName:string): microflows.ActionActivity {
+		
+		var pageSettings = pages.PageSettings.create(this._model);
+		pageSettings.page = this._model.findPageByQualifiedName(pageName); //This can be replaced by passing the IPage into the function
+
+		var showPageAction = microflows.ShowPageAction.create(this._model);
+		showPageAction.pageSettings = pageSettings;
+
+		let showPageActionActivity = microflows.ActionActivity.create(this._model);
+		showPageActionActivity.action = showPageAction;	
+		
+		return showPageActionActivity
 	}
 }
 

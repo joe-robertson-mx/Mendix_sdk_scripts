@@ -1,7 +1,7 @@
 import {MendixSdkClient, Project, OnlineWorkingCopy, Revision, Branch} from 'mendixplatformsdk/dist';
 import {IModel,domainmodels, microflows, projects, datatypes} from 'mendixmodelsdk/dist';
 import {Microflow} from './mendix-component-creators/Microflow';
-import { eServices as config} from '../config' 
+import { DemoApplication as config} from '../config' 
 
 // expressions for supported attribute types
 // https://apidocs.mendix.com/modelsdk/latest/modules/domainmodels.html

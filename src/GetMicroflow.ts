@@ -20,7 +20,7 @@ async function serialize(){
         fs.mkdirSync(basePath);    
     }
 
-    const mfName = 'Sub_CreateLog' //Change this to export different microflows
+    const mfName = 'ACT_PageOpenDemo' //Change this to export different microflows
 
     await exportMicroflow (wc, basePath, mfName)
 }
