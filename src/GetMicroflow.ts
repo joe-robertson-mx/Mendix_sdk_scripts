@@ -3,7 +3,7 @@ import {JavaScriptSerializer, StructuralUnit, IStructuralUnit, projects, constan
         javaactions, pages, microflows, enumerations, exportmappings, importmappings,
         scheduledevents, xmlschemas, domainmodels, images, jsonstructures, security} from 'mendixmodelsdk/dist';
 import when = require('when');
-import {eServices as config} from '../config' // Change this to change project
+import {DemoApplication as config} from '../config' // Change this to change project
 import fs = require('fs');;
 var path = require('path');
 
@@ -20,7 +20,7 @@ async function serialize(){
         fs.mkdirSync(basePath);    
     }
 
-    const mfName = 'ACT_PageOpenDemo' //Change this to export different microflows
+    const mfName = 'ACT_RecipePage_Open' //Change this to export different microflows
 
     await exportMicroflow (wc, basePath, mfName)
 }

@@ -1,4 +1,4 @@
-import {IModel, projects, pages, microflows, datatypes, texts, domainmodels} from "mendixmodelsdk/dist"
+import {IModel, projects, pages, microflows, datatypes, texts, domainmodels, Model} from "mendixmodelsdk/dist"
 
 export class Microflow {
 	private _model: IModel;
@@ -156,29 +156,114 @@ export class Microflow {
 		return validationFeedbackActivity;
 	}
 
+	// generateParameter (): microflows.MicroflowParameterObject {
+	// 	var objectType = datatypes.ObjectType.create(this._model);
+	// 	objectType.entity = this._model.findEntityByQualifiedName("MyFirstModule.Recipes")!;
+	
+	// 	var recipes = microflows.MicroflowParameterObject.create(this._model);
+	// 	recipes.relativeMiddlePoint = {"x":85,"y":105};
+	// 	recipes.size = {"width":30,"height":30};
+	// 	recipes.name = "Recipes";
+	// 	recipes.variableType = objectType;   // Note: for this property a default value is defined.
+
+	// 	return recipes
+	
+	// }
+
+	generateLogMessage (pageName: string): microflows.ActionActivity {
+	
+		var userNameTemplateArgument = microflows.TemplateArgument.create(this._model);
+		userNameTemplateArgument.expression = "$currentUser/Name"; 
+	
+		var nowTemplateArgument = microflows.TemplateArgument.create(this._model);
+		nowTemplateArgument.expression = "formatDateTime([%CurrentDateTime%], 'dd/MM/yyyy HH:mm')";
+
+		// var logNodeTemplateArgument = microflows.TemplateArgument.create(this._model);
+		// logNodeTemplateArgument.expression = ""Page access; //Hardcoding, better practice to pass in as param and use Enum
+
+		// var logResultTemplateArgument = microflows.TemplateArgument.create(this._model);
+		// logResultTemplateArgument.expression = "Success"; //Hardcoding, better practice to pass in as param and use Enum	
+	
+		var IPAddressTemplateArgument = microflows.TemplateArgument.create(this._model);
+		IPAddressTemplateArgument.expression = "$IPAddress"; // "Should $IPAddress but using string for testing"
+	
+		var browserTypeTemplateArgument = microflows.TemplateArgument.create(this._model);
+		browserTypeTemplateArgument.expression = "$BrowserType"; // Should be $BrowserType but using string for testing
+	
+		var logContentStringTemplate = microflows.StringTemplate.create(this._model);
+		logContentStringTemplate.arguments.push(userNameTemplateArgument);
+		logContentStringTemplate.arguments.push(nowTemplateArgument);
+		// logContentStringTemplate.arguments.push(logNodeTemplateArgument);
+		// logContentStringTemplate.arguments.push(logResultTemplateArgument);
+		logContentStringTemplate.arguments.push(IPAddressTemplateArgument);
+		logContentStringTemplate.arguments.push(browserTypeTemplateArgument);
+		logContentStringTemplate.text = "User: {1}, Date and time: {2}, Event type: Page access, Result: Success, IP address: {3}, Browser type: {4}\r\n";
+	
+		var logMessageAction = microflows.LogMessageAction.create(this._model);
+		logMessageAction.level = microflows.LogLevel.Info;
+		logMessageAction.node = `'Page accessed ${pageName}'`
+		logMessageAction.messageTemplate = logContentStringTemplate;   // Note: for this property a default value is defined.
+	
+		var actionActivity = microflows.ActionActivity.create(this._model);
+		actionActivity.action = logMessageAction;
+		actionActivity.caption = "Page log";
+		actionActivity.autoGenerateCaption = true;
+		actionActivity.backgroundColor = microflows.ActionActivityColor.Gray;
+
+		return actionActivity
+
+	}
+
+	generateJavaAction (name:string, useReturn: boolean, outputVarName: string|null):microflows.ActionActivity {
+		var javaActionCallAction = microflows.JavaActionCallAction.create(this._model);
+		javaActionCallAction.javaAction = this._model.findJavaActionByQualifiedName(name);
+		javaActionCallAction.useReturnVariable = useReturn;
+		if (outputVarName) {
+			javaActionCallAction.outputVariableName = outputVarName;
+		}
+
+		let javaActionActivity = microflows.ActionActivity.create(this._model);
+		javaActionActivity.action = javaActionCallAction;	
+
+		return javaActionActivity
+	}
+
 	generateLoggingPageMicroflowCall (pageName:string): microflows.ActionActivity {
-		
-		//Microflow call
+		//THE MICROFLOW CANNOT CURRENTLY BE AUTOMATED DUE TO THE PARAMETERS
+		//Try this https://forum.mendixcloud.com/link/questions/87491
+		//Try this https://forum.mendixcloud.com/link/questions/91422
+		//Microflow call REPLACE WITH LOG!
 		var microflowCall = microflows.MicroflowCall.create(this._model);
 		microflowCall.microflow = this._model.findMicroflowByQualifiedName("CustomLogging.Sub_CreateLog");
 
-		//Parameters
-		var LoggingResultParameter = microflows.MicroflowCallParameterMapping.create(this._model);
-		LoggingResultParameter.argument = "CustomLogging.Enum_LoggingResult.Success";
+		var LoggingResultParameterMapping = microflows.MicroflowCallParameterMapping.createIn(microflowCall);
+		LoggingResultParameterMapping.argument = "CustomLogging.Enum_LoggingResult.Success";
+		// (LoggingResultParameterMapping as any)["__parameter"].updateWithRawValue("CustomLogging.Sub_CreateLog.Result");
 
-		var EventTypeParameter = microflows.MicroflowCallParameterMapping.create(this._model);
-		EventTypeParameter.argument = "CustomLogging.Enum_EventType.Page_access";
+		var testParameter = this._model.findMicroflowParameterByQualifiedName("CustomLogging.Sub_CreateLog.Result")
+		console.log (testParameter)
+		LoggingResultParameterMapping.parameter = testParameter!;
 
-		var LogNodeNameParameter = microflows.MicroflowCallParameterMapping.create(this._model);
-		LogNodeNameParameter.argument = `${pageName} accessed`
+		var EventTypeParameterMapping = microflows.MicroflowCallParameterMapping.createIn(microflowCall);
+		EventTypeParameterMapping.argument = "CustomLogging.Enum_EventType.Page_access";
+		(EventTypeParameterMapping as any)["__parameter"].updateWithRawValue("CustomLogging.Sub_CreateLog.EventType");
 
-		var LoggingLevelParameter = microflows.MicroflowCallParameterMapping.create(this._model);
-		LoggingLevelParameter.argument = "CustomLogging.Enum_LoggingLevel.Info";
+		var LogNodeNameParameterMapping = microflows.MicroflowCallParameterMapping.createIn(microflowCall);
+		LogNodeNameParameterMapping.argument = `${pageName} accessed`;
+		(LogNodeNameParameterMapping as any)["__parameter"].updateWithRawValue("CustomLogging.Sub_CreateLog.LogNodeName");
 
-		microflowCall.parameterMappings.push(LoggingResultParameter);
-		microflowCall.parameterMappings.push(EventTypeParameter);
-		microflowCall.parameterMappings.push(LogNodeNameParameter);
-		microflowCall.parameterMappings.push(LoggingLevelParameter);
+		var LoggingLevelParameterMapping = microflows.MicroflowCallParameterMapping.createIn(microflowCall);
+		LoggingLevelParameterMapping.argument = "CustomLogging.Enum_LoggingLevel.Info";
+		(LoggingLevelParameterMapping as any)["__parameter"].updateWithRawValue("CustomLogging.Sub_CreateLog.Enum_LogLevel");
+
+		console.log (LoggingLevelParameterMapping)
+		console.log (LoggingResultParameterMapping.parameter, EventTypeParameterMapping.parameter, LogNodeNameParameterMapping.parameter, LoggingLevelParameterMapping.parameter)
+		var props = microflowCall.microflow?.allProperties()
+		console.log (props)
+
+		var templateArgument18 = microflows.TemplateArgument.create(this._model);
+		//
+
 
 		//Create the action
 		var microflowCallAction = microflows.MicroflowCallAction.create(this._model);
