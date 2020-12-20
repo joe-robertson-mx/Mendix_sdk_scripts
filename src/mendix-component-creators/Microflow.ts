@@ -277,13 +277,17 @@ export class Microflow {
 
 	}
 
-	generatePageOpenCall (pageName:string): microflows.ActionActivity {
+	generatePageOpenCall (pageName:string, entityName: string|null): microflows.ActionActivity {
 		
 		var pageSettings = pages.PageSettings.create(this._model);
 		pageSettings.page = this._model.findPageByQualifiedName(pageName); //This can be replaced by passing the IPage into the function
 
 		var showPageAction = microflows.ShowPageAction.create(this._model);
 		showPageAction.pageSettings = pageSettings;
+
+		if (entityName) {
+			showPageAction.passedObjectVariableName = entityName;
+		}
 
 		let showPageActionActivity = microflows.ActionActivity.create(this._model);
 		showPageActionActivity.action = showPageAction;	

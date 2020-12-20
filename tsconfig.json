@@ -63,5 +63,5 @@
     // "emitDecoratorMetadata": true,         /* Enables experimental support for emitting type metadata for decorators. */
   },
   "files": ["src/MicroflowActivityColours.ts","src/MicroflowRenameScript.ts", "src/GetModelStructure.ts", "src/GetMicroflow.ts", "src/ValidationCreator.ts", 
-    "src/CreateMicroflow.ts",  "src/GetPage.ts"]
+    "src/CreateMicroflow.ts",  "src/GetPage.ts", "src/CreateMicroflowFromPages.ts"]
 }

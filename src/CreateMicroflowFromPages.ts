@@ -1,6 +1,10 @@
 import {MendixSdkClient, Project, OnlineWorkingCopy, Revision, Branch} from 'mendixplatformsdk/dist';
-import {IModel, microflows, projects, datatypes} from 'mendixmodelsdk/dist';
+import {IModel, IStructure, microflows, projects, datatypes, domainmodels, pages} from 'mendixmodelsdk/dist';
 import {Microflow} from './mendix-component-creators/Microflow';
+import fs = require('fs')
+import when = require('when');
+var path = require('path');
+
 import { DemoApplication as config} from '../config' 
 
 
@@ -10,9 +14,16 @@ const project = new Project(client,config.project.id, config.project.name);
 async function execute(){   
     const workingCopy = await client.platform().createOnlineWorkingCopy(project, new Revision(
         -1, new Branch(project, (config.project.branch === "") ? "" : config.project.branch))); // we'll always use the latest revision
+        
+    // create the output folder
+    const filePath = './out';
+    if( !fs.existsSync(filePath)){
+        fs.mkdirSync(filePath);    
+    }
+    
+
+    //Get logging module
     const loggingModuleName = "CustomLogging"
-    const pageName = "CustomLogging.Page_Test"
-    let allModules = workingCopy.model().allModules()
     let loggingModules = workingCopy.model().allModules().filter(m => {             
         if (m.name == loggingModuleName) {
             return true
@@ -21,8 +32,20 @@ async function execute(){
     });
 
     if (loggingModules.length > 0) {
-    let [loggingModule] = loggingModules
-    createMicroflows(workingCopy, loggingModule, pageName, ""); //Update entity name    
+        let [loggingModule] = loggingModules
+        const pages = workingCopy.model().allPages()
+
+    for (const page of pages) {
+        const loadedDocument = await loadPageAsPromise(page);
+        var filepath = getSanitisedAndUniqueFilePath (filePath, loadedDocument.name, '_')
+        let pageName = page.qualifiedName!
+
+        const pageParameterEntityName = getPageParameterFromPage (page)
+        
+        console.log (`Creating microflow for page name ${pageName}`)
+        createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName); //Update entity name 
+        console.log (`Finished creating microflow for page name ${pageName}`) 
+    }
 
      workingCopy.commit((config.project.branch === "") ? null : config.project.branch)
          .done(
@@ -33,7 +56,7 @@ async function execute(){
                  console.log("Something went wrong.");
                  console.dir(error);
              });
-     }
+    }
     
      else {
          console.log ('No such logging module found')
@@ -43,7 +66,7 @@ async function execute(){
 execute();
 
 
-function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, EntityName: string) {    
+function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, entityName: string|null) {    
 
             var pageNameTrimmed= pageName.substring(pageName.indexOf(".") + 1);
             var moduleName = module.name
@@ -54,7 +77,7 @@ function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModu
             console.log( `-> ${microflowName}`);
             var mf = workingCopy.model().findMicroflowByQualifiedName(moduleName + '.' + microflowName);
             if( !mf ){          
-                createLoggingMicroflow(workingCopy.model(),microflowName, pageName, folder, EntityName);
+                createLoggingMicroflow(workingCopy.model(),microflowName, pageName, folder, entityName);
             }
             else{
                 console.log( `\t\t!!! Microflow '${microflowName}' not created. A microflow with that name already exists.`);
@@ -71,7 +94,7 @@ function createFolder(folderBase : projects.IFolderBase, folderName: string): pr
     return folder; 
 }
 
-function createLoggingMicroflow (model: IModel, microflowName : string, pageName : string, folder : projects.IFolderBase, entityName: string) {
+function createLoggingMicroflow (model: IModel, microflowName : string, pageName : string, folder : projects.IFolderBase, entityName: string|null) {
     let lastActivity : microflows.MicroflowObject;
 
     const mfReturnType = datatypes.BooleanType.create(model);
@@ -105,8 +128,7 @@ function createLoggingMicroflow (model: IModel, microflowName : string, pageName
         microflow.addInputParameter (entityName, pageParam)
 
     }
-
-
+    
     //Page open activity
     const pageOpenActivity = microflow.generatePageOpenCall (pageName, entityName)
     microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
@@ -119,3 +141,58 @@ function createLoggingMicroflow (model: IModel, microflowName : string, pageName
     lastActivity = endEvent;
 }
 
+function loadPageAsPromise (page: pages.IPage): when.Promise<pages.Page> {
+    return when.promise<pages.Page>((resolve, reject) => page.load(resolve));
+}
+
+function getSanitisedAndUniqueFilePath(basePath : string, filename : string | null, replaceValue : string, attempt : number = 1) : string {
+    filename = filename || "";
+    filename = filename.replace(/[/\\?%*:|"<>]/g, replaceValue);
+    if(!filename.endsWith(".js")){
+        filename += '.js';
+    }
+    let filePath = path.join(basePath, filename);
+
+    if(fs.existsSync(filePath)){
+        filename = filename + `${attempt}`;
+        filePath = getSanitisedAndUniqueFilePath(basePath, filename, replaceValue, attempt++);
+    }
+
+    return filePath;
+}
+
+/**
+* Traverses a given structure and returns all buttons, controlbar buttons and listviews
+*/
+function getStructures(structure: IStructure): IStructure[] {
+
+    var structures: any[] = [];
+    structure.traverse(function(structure) {
+        if (structure instanceof domainmodels.DirectEntityRef)  {
+            structures.push(structure);
+        }
+    });
+    return structures;
+}
+
+function getPageParameterFromPage (page:pages.IPage): string|null {
+    const pageStructures = getStructures (page)
+    let entityRefs = pageStructures.filter(p => p instanceof domainmodels.DirectEntityRef) as domainmodels.DirectEntityRef[];
+
+    if (entityRefs.length === 0) {
+        return null
+    }
+
+    if (entityRefs.length > 1) {
+        throw new Error (`Uh oh, more than 1 page parameter for ${page.name}`)
+        return null
+    }
+
+    else {
+        const [entityRef] = entityRefs
+        if (entityRef.entity) {
+            return entityRef.entity.qualifiedName;
+        }
+        else return null
+    }
+}
