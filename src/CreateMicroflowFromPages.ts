@@ -21,7 +21,6 @@ async function execute(){
         fs.mkdirSync(filePath);    
     }
     
-
     //Get logging module
     const loggingModuleName = "CustomLogging"
     let loggingModules = workingCopy.model().allModules().filter(m => {             
@@ -34,16 +33,17 @@ async function execute(){
     if (loggingModules.length > 0) {
         let [loggingModule] = loggingModules
         const pages = workingCopy.model().allPages()
+        var folderBase = loggingModule.domainModel.containerAsFolderBase
+        let folder : projects.IFolderBase = createFolder(folderBase, config.app.folderName);  
 
     for (const page of pages) {
-        const loadedDocument = await loadPageAsPromise(page);
-        var filepath = getSanitisedAndUniqueFilePath (filePath, loadedDocument.name, '_')
+        const loadedPage = await loadPageAsPromise(page);
         let pageName = page.qualifiedName!
 
-        const pageParameterEntityName = getPageParameterFromPage (page)
+        const pageParameterEntityName = getPageParameterFromPage (loadedPage)
+        console.log (pageParameterEntityName)
         
-        console.log (`Creating microflow for page name ${pageName}`)
-        createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName); //Update entity name 
+        createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, folder); //Update entity name 
         console.log (`Finished creating microflow for page name ${pageName}`) 
     }
 
@@ -57,7 +57,6 @@ async function execute(){
                  console.dir(error);
              });
     }
-    
      else {
          console.log ('No such logging module found')
     }
@@ -66,15 +65,12 @@ async function execute(){
 execute();
 
 
-function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, entityName: string|null) {    
+function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, entityName: string|null, folder:projects.IFolderBase) {    
 
             var pageNameTrimmed= pageName.substring(pageName.indexOf(".") + 1);
             var moduleName = module.name
-            var microflowName = `ACT_Page_${moduleName}_${pageNameTrimmed}_Open`;
-            var folderBase = module.domainModel.containerAsFolderBase
-            
-            let folder : projects.IFolderBase = createFolder(folderBase, config.app.folderName);  
-            console.log( `-> ${microflowName}`);
+            var microflowName = `ACT_${pageNameTrimmed}_Open`;
+ 
             var mf = workingCopy.model().findMicroflowByQualifiedName(moduleName + '.' + microflowName);
             if( !mf ){          
                 createLoggingMicroflow(workingCopy.model(),microflowName, pageName, folder, entityName);
@@ -82,7 +78,6 @@ function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModu
             else{
                 console.log( `\t\t!!! Microflow '${microflowName}' not created. A microflow with that name already exists.`);
             }                        
-        console.log( `<-- ${moduleName}`);
     }
 
 function createFolder(folderBase : projects.IFolderBase, folderName: string): projects.IFolderBase {
@@ -145,26 +140,11 @@ function loadPageAsPromise (page: pages.IPage): when.Promise<pages.Page> {
     return when.promise<pages.Page>((resolve, reject) => page.load(resolve));
 }
 
-function getSanitisedAndUniqueFilePath(basePath : string, filename : string | null, replaceValue : string, attempt : number = 1) : string {
-    filename = filename || "";
-    filename = filename.replace(/[/\\?%*:|"<>]/g, replaceValue);
-    if(!filename.endsWith(".js")){
-        filename += '.js';
-    }
-    let filePath = path.join(basePath, filename);
-
-    if(fs.existsSync(filePath)){
-        filename = filename + `${attempt}`;
-        filePath = getSanitisedAndUniqueFilePath(basePath, filename, replaceValue, attempt++);
-    }
-
-    return filePath;
-}
 
 /**
 * Traverses a given structure and returns all buttons, controlbar buttons and listviews
 */
-function getStructures(structure: IStructure): IStructure[] {
+function getDirectEntityRefs(structure: IStructure): IStructure[] {
 
     var structures: any[] = [];
     structure.traverse(function(structure) {
@@ -175,24 +155,17 @@ function getStructures(structure: IStructure): IStructure[] {
     return structures;
 }
 
-function getPageParameterFromPage (page:pages.IPage): string|null {
-    const pageStructures = getStructures (page)
-    let entityRefs = pageStructures.filter(p => p instanceof domainmodels.DirectEntityRef) as domainmodels.DirectEntityRef[];
+function getPageParameterFromPage (page:pages.Page): string|null {
+    if (!page.excluded) {
+        const pageStructures = getDirectEntityRefs (page)
+        let entityRefs = pageStructures.filter(p => p instanceof domainmodels.DirectEntityRef) as domainmodels.DirectEntityRef[]
+        let dataViewEntityRefs = entityRefs.filter (e => e.container instanceof pages.DataViewSource ) 
 
-    if (entityRefs.length === 0) {
-        return null
-    }
-
-    if (entityRefs.length > 1) {
-        throw new Error (`Uh oh, more than 1 page parameter for ${page.name}`)
-        return null
-    }
-
-    else {
-        const [entityRef] = entityRefs
-        if (entityRef.entity) {
-            return entityRef.entity.qualifiedName;
+        if (dataViewEntityRefs.length >= 1) {
+            const [dataViewEntityRef] = dataViewEntityRefs //Where more than one reference is made. The page parameter will always be the first in the array
+            return dataViewEntityRef.entity.qualifiedName
         }
-        else return null
     }
+        
+        return null
 }

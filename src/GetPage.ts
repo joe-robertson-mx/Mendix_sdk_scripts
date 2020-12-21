@@ -2,9 +2,9 @@ import {MendixSdkClient, Project, OnlineWorkingCopy, Revision, Branch,loadAsProm
 import {JavaScriptSerializer, Structure, IStructure, StructuralUnit, IStructuralUnit, projects, constants, 
         javaactions, pages, domainmodels} from 'mendixmodelsdk/dist';
 import when = require('when');
-import {DemoApplication as config} from '../config' // Change this to change project
-import fs = require('fs');import { domain } from 'process';
-;
+import {eServices as config} from '../config' // Change this to change project
+import fs = require('fs');
+import { domain } from 'process';
 var path = require('path');
 
 const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
@@ -20,15 +20,15 @@ async function serialize(){
         fs.mkdirSync(basePath);    
     }
 
-    const pageName = 'Page' //Change this to export different microflows
+    const pageName = 'RepairRequestLine_RepairOrder_PopUp' //Change this to export different pages
 
-    await exportMicroflow (wc, basePath, pageName)
+    await exportPage (wc, basePath, pageName)
 }
 
 serialize();
 
 
-async function exportMicroflow(wc : OnlineWorkingCopy, filePath : string, mfName:string){
+async function exportPage(wc : OnlineWorkingCopy, filePath : string, mfName:string){
 
     const pages = wc.model().allPages()
         const filteredPage = pages.filter (mf => {
@@ -51,29 +51,9 @@ async function exportMicroflow(wc : OnlineWorkingCopy, filePath : string, mfName
                     var  pageParameterEntityName = entityRef.entity.qualifiedName
                     console.log (pageParameterEntityName)
                 }
-                return
             }
         }
 
-        // const layoutCall = loadedDocument.layoutCall
-        // const loadedLayout = await loadLayoutCallAsPromise (layoutCall)
-        // const arg = loadedLayout.arguments
-
-
-        // for (var a of arg) {
-        //     const widgets = a.widgets
-        //     console.log (widgets.length)
-        //     for (var widget of widgets) {
-        //     // const widgetvalue = widget?.containerAsWidgetValue
-        //     // const ent = widgetvalue?.entityPath
-        //     console.log (widget.name)
-        //     var dv = widget.containerAsDataView
-        //     }
-
-        // //    var par = await loadAsPromise (a.parameter)
-        // //    console.log (par.qualifiedName)
-        // }
-        // // console.log (loadedDocument)>
         fs.writeFileSync(filepath,serialised );
     }
     console.log(`Page exported`);
