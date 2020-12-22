@@ -117,7 +117,6 @@ export class Microflow {
 
 	generateExcusiveSplit(splitExpression: string, caption: string) : microflows.ExclusiveSplit {
 		let exclusiveSplit = microflows.ExclusiveSplit.create(this._model);
-
         let splitCondition = microflows.ExpressionSplitCondition.create(this._model);
 		splitCondition.expression = splitExpression;
 		exclusiveSplit.splitCondition = splitCondition;

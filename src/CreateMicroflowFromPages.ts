@@ -1,5 +1,5 @@
 import {MendixSdkClient, Project, OnlineWorkingCopy, Revision, Branch} from 'mendixplatformsdk/dist';
-import {IModel, IStructure, microflows, projects, datatypes, domainmodels, pages} from 'mendixmodelsdk/dist';
+import {IModel, IStructure, IStructuralUnit, microflows, projects, datatypes, domainmodels, pages} from 'mendixmodelsdk/dist';
 import {Microflow} from './mendix-component-creators/Microflow';
 import fs = require('fs')
 import when = require('when');
@@ -14,13 +14,7 @@ const project = new Project(client,config.project.id, config.project.name);
 async function execute(){   
     const workingCopy = await client.platform().createOnlineWorkingCopy(project, new Revision(
         -1, new Branch(project, (config.project.branch === "") ? "" : config.project.branch))); // we'll always use the latest revision
-        
-    // create the output folder
-    const filePath = './out';
-    if( !fs.existsSync(filePath)){
-        fs.mkdirSync(filePath);    
-    }
-    
+           
     //Get logging module
     const loggingModuleName = "CustomLogging"
     let loggingModules = workingCopy.model().allModules().filter(m => {             
@@ -39,11 +33,30 @@ async function execute(){
     for (const page of pages) {
         const loadedPage = await loadPageAsPromise(page);
         let pageName = page.qualifiedName!
-
-        const pageParameterEntityName = getPageParameterFromPage (loadedPage)
-        console.log (pageParameterEntityName)
+        const pageParameterEntityName = getPageParameterFromPage (loadedPage) 
+        let structuralUnit = page as IStructuralUnit 
+        let moduleName = getContainingModuleName (structuralUnit)
         
-        createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, folder); //Update entity name 
+        let moduleFolder = loggingModule.traverseFind (function (structure) {
+            if (structure instanceof projects.Folder) {
+                let folder = structure as projects.Folder
+                if (folder.name === moduleName) {
+                    return folder
+                }                
+            }
+        }) //Returns folder where folder name is moduleName
+
+        console.log (`Existing ${moduleFolder?.name}`)
+
+        if (!moduleFolder) {
+            let newFolder = createFolder (folder, moduleName)
+            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, newFolder) 
+        }
+
+        else {
+            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, moduleFolder) //If statement covers where folder cannot be found. Is there a better way?
+        }
+       
         console.log (`Finished creating microflow for page name ${pageName}`) 
     }
 
@@ -85,6 +98,7 @@ function createFolder(folderBase : projects.IFolderBase, folderName: string): pr
     if( !folder ){
         folder = projects.Folder.createIn(folderBase);
         folder.name = folderName;
+        console.log (folder.name)
     }  
     return folder; 
 }
@@ -119,18 +133,12 @@ function createLoggingMicroflow (model: IModel, microflowName : string, pageName
     if (entityName) {
         var pageParam = datatypes.ObjectType.create(model);
         pageParam.entity = model.findEntityByQualifiedName(entityName)!; //Is there a better way to do this
-
         microflow.addInputParameter (entityName, pageParam)
-
     }
     
-    //Page open activity
-    const pageOpenActivity = microflow.generatePageOpenCall (pageName, entityName)
-    microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
-    lastActivity = pageOpenActivity
-
+    
     // END
-    const endEvent = microflow.generateEndEvent("true");
+    const endEvent = microflow.generateEndEvent("false");
     microflow.addObjectToMicroflow(
         endEvent, 100, 0, lastActivity, Microflow.ConnectorPosition.Right, Microflow.ConnectorPosition.Left);
     lastActivity = endEvent;
@@ -145,7 +153,6 @@ function loadPageAsPromise (page: pages.IPage): when.Promise<pages.Page> {
 * Traverses a given structure and returns all buttons, controlbar buttons and listviews
 */
 function getDirectEntityRefs(structure: IStructure): IStructure[] {
-
     var structures: any[] = [];
     structure.traverse(function(structure) {
         if (structure instanceof domainmodels.DirectEntityRef)  {
@@ -165,7 +172,15 @@ function getPageParameterFromPage (page:pages.Page): string|null {
             const [dataViewEntityRef] = dataViewEntityRefs //Where more than one reference is made. The page parameter will always be the first in the array
             return dataViewEntityRef.entity.qualifiedName
         }
-    }
-        
+    }     
         return null
+}
+
+function getContainingModuleName(container : IStructuralUnit) : string{
+    if(container.structureTypeName != "Projects$Module"){
+        return getContainingModuleName(container.container)
+    }
+    else {
+        return (container as projects.Module).name
+    }    
 }
