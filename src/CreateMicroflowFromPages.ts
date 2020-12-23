@@ -5,7 +5,7 @@ import fs = require('fs')
 import when = require('when');
 var path = require('path');
 
-import { DemoApplication as config} from '../config' 
+import { IntegrationTraining as config} from '../config' 
 
 
 const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
@@ -29,7 +29,7 @@ async function execute(){
         const pages = workingCopy.model().allPages()
         var folderBase = loggingModule.domainModel.containerAsFolderBase
         let folder : projects.IFolderBase = createFolder(folderBase, config.app.folderName);  
-
+        let count = 0
     for (const page of pages) {
         const loadedPage = await loadPageAsPromise(page);
         let pageName = page.qualifiedName!
@@ -46,19 +46,20 @@ async function execute(){
             }
         }) //Returns folder where folder name is moduleName
 
-        console.log (`Existing ${moduleFolder?.name}`)
-
         if (!moduleFolder) {
             let newFolder = createFolder (folder, moduleName)
             createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, newFolder) 
+            count++
         }
 
         else {
             createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, moduleFolder) //If statement covers where folder cannot be found. Is there a better way?
+            count++
         }
        
-        console.log (`Finished creating microflow for page name ${pageName}`) 
     }
+
+    console.log (`${count} microflows succesfully created`)
 
      workingCopy.commit((config.project.branch === "") ? null : config.project.branch)
          .done(
@@ -82,7 +83,7 @@ function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModu
 
             var pageNameTrimmed= pageName.substring(pageName.indexOf(".") + 1);
             var moduleName = module.name
-            var microflowName = `ACT_${pageNameTrimmed}_Open`;
+            var microflowName = `ACT_${pageNameTrimmed}_OpenWithLog`;
  
             var mf = workingCopy.model().findMicroflowByQualifiedName(moduleName + '.' + microflowName);
             if( !mf ){          
@@ -135,8 +136,12 @@ function createLoggingMicroflow (model: IModel, microflowName : string, pageName
         pageParam.entity = model.findEntityByQualifiedName(entityName)!; //Is there a better way to do this
         microflow.addInputParameter (entityName, pageParam)
     }
-    
-    
+
+    //Page Open activity
+    const pageOpenActivity = microflow.generatePageOpenCall (pageName, entityName)
+    microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
+    lastActivity = pageOpenActivity
+
     // END
     const endEvent = microflow.generateEndEvent("false");
     microflow.addObjectToMicroflow(

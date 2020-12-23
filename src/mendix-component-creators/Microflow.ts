@@ -155,20 +155,6 @@ export class Microflow {
 		return validationFeedbackActivity;
 	}
 
-	// generateParameter (): microflows.MicroflowParameterObject {
-	// 	var objectType = datatypes.ObjectType.create(this._model);
-	// 	objectType.entity = this._model.findEntityByQualifiedName("MyFirstModule.Recipes")!;
-	
-	// 	var recipes = microflows.MicroflowParameterObject.create(this._model);
-	// 	recipes.relativeMiddlePoint = {"x":85,"y":105};
-	// 	recipes.size = {"width":30,"height":30};
-	// 	recipes.name = "Recipes";
-	// 	recipes.variableType = objectType;   // Note: for this property a default value is defined.
-
-	// 	return recipes
-	
-	// }
-
 	generateLogMessage (pageName: string): microflows.ActionActivity {
 	
 		var userNameTemplateArgument = microflows.TemplateArgument.create(this._model);
@@ -176,24 +162,16 @@ export class Microflow {
 	
 		var nowTemplateArgument = microflows.TemplateArgument.create(this._model);
 		nowTemplateArgument.expression = "formatDateTime([%CurrentDateTime%], 'dd/MM/yyyy HH:mm')";
-
-		// var logNodeTemplateArgument = microflows.TemplateArgument.create(this._model);
-		// logNodeTemplateArgument.expression = ""Page access; //Hardcoding, better practice to pass in as param and use Enum
-
-		// var logResultTemplateArgument = microflows.TemplateArgument.create(this._model);
-		// logResultTemplateArgument.expression = "Success"; //Hardcoding, better practice to pass in as param and use Enum	
 	
 		var IPAddressTemplateArgument = microflows.TemplateArgument.create(this._model);
-		IPAddressTemplateArgument.expression = "$IPAddress"; // "Should $IPAddress but using string for testing"
+		IPAddressTemplateArgument.expression = "$IPAddress"; 
 	
 		var browserTypeTemplateArgument = microflows.TemplateArgument.create(this._model);
-		browserTypeTemplateArgument.expression = "$BrowserType"; // Should be $BrowserType but using string for testing
+		browserTypeTemplateArgument.expression = "$BrowserType"; 
 	
 		var logContentStringTemplate = microflows.StringTemplate.create(this._model);
 		logContentStringTemplate.arguments.push(userNameTemplateArgument);
 		logContentStringTemplate.arguments.push(nowTemplateArgument);
-		// logContentStringTemplate.arguments.push(logNodeTemplateArgument);
-		// logContentStringTemplate.arguments.push(logResultTemplateArgument);
 		logContentStringTemplate.arguments.push(IPAddressTemplateArgument);
 		logContentStringTemplate.arguments.push(browserTypeTemplateArgument);
 		logContentStringTemplate.text = "User: {1}, Date and time: {2}, Event type: Page access, Result: Success, IP address: {3}, Browser type: {4}\r\n";
@@ -227,6 +205,8 @@ export class Microflow {
 		return javaActionActivity
 	}
 
+
+	//Limitiations in the API mean this function does not currently work
 	generateLoggingPageMicroflowCall (pageName:string): microflows.ActionActivity {
 		//THE MICROFLOW CANNOT CURRENTLY BE AUTOMATED DUE TO THE PARAMETERS
 		//Try this https://forum.mendixcloud.com/link/questions/87491
