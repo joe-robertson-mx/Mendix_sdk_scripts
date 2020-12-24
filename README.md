@@ -25,7 +25,7 @@ Install project dependencies by running the following command
 
 ## Configuration
 
-Create a config file that exports a JSON object. Example below
+Create a config file named config.js that exports a JSON object. Example below
 
 export const eServ4SDK = {
     auth: {
