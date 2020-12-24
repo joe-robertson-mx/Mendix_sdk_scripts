@@ -5,7 +5,7 @@ import fs = require('fs')
 import when = require('when');
 var path = require('path');
 
-import { IntegrationTraining as config} from '../config' 
+import { eServ4SDK as config} from '../config' 
 
 
 const client = new MendixSdkClient(config.auth.username, config.auth.apikey);
