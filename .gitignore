@@ -6,3 +6,4 @@ build/*
 reference/
 out/*
 config.ts
+config.js
