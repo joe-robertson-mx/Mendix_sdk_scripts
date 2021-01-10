@@ -32,6 +32,10 @@ async function execute(){
         let count = 0
     for (const page of pages) {
         const loadedPage = await loadPageAsPromise(page);
+        if (loadedPage.excluded) {
+            continue
+        }
+
         let pageName = page.qualifiedName!
         const pageParameterEntityName = getPageParameterFromPage (loadedPage) 
         let structuralUnit = page as IStructuralUnit 
@@ -48,12 +52,12 @@ async function execute(){
 
         if (!moduleFolder) {
             let newFolder = createFolder (folder, moduleName)
-            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, newFolder) 
+            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, newFolder, moduleName) 
             count++
         }
 
         else {
-            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, moduleFolder) //If statement covers where folder cannot be found. Is there a better way?
+            createMicroflows(workingCopy, loggingModule, pageName, pageParameterEntityName, moduleFolder, moduleName) //If statement covers where folder cannot be found. Is there a better way?
             count++
         }
        
@@ -79,18 +83,19 @@ async function execute(){
 execute();
 
 
-function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, entityName: string|null, folder:projects.IFolderBase) {    
+function createMicroflows(workingCopy: OnlineWorkingCopy, module: projects.IModule, pageName: string, entityName: string|null, folder:projects.IFolderBase, moduleName:string) {    
 
             var pageNameTrimmed= pageName.substring(pageName.indexOf(".") + 1);
-            var moduleName = module.name
+            var customLoggingModuleName = module.name //Custom logging name
             var microflowName = `ACT_${pageNameTrimmed}_OpenWithLog`;
  
-            var mf = workingCopy.model().findMicroflowByQualifiedName(moduleName + '.' + microflowName);
+            var mf = workingCopy.model().findMicroflowByQualifiedName(customLoggingModuleName + '.' + microflowName);
             if( !mf ){          
                 createLoggingMicroflow(workingCopy.model(),microflowName, pageName, folder, entityName);
             }
             else{
-                console.log( `\t\t!!! Microflow '${microflowName}' not created. A microflow with that name already exists.`);
+                microflowName = `ACT_${pageNameTrimmed}_OpenWithLog_${moduleName}` //Can never have two pages with the same name in the same module
+                createLoggingMicroflow(workingCopy.model(),microflowName, pageName, folder, entityName);
             }                        
     }
 
@@ -134,13 +139,21 @@ function createLoggingMicroflow (model: IModel, microflowName : string, pageName
     if (entityName) {
         var pageParam = datatypes.ObjectType.create(model);
         pageParam.entity = model.findEntityByQualifiedName(entityName)!; //Is there a better way to do this
-        microflow.addInputParameter (entityName, pageParam)
+        var trimmedEntityName = entityName.substring(entityName.indexOf(".") + 1);
+        microflow.addInputParameter (trimmedEntityName, pageParam)
+
+        //Page Open activity
+        const pageOpenActivity = microflow.generatePageOpenCall (pageName, trimmedEntityName)
+        microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
+        lastActivity = pageOpenActivity
     }
 
-    //Page Open activity
-    const pageOpenActivity = microflow.generatePageOpenCall (pageName, entityName)
-    microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
-    lastActivity = pageOpenActivity
+    else {
+        //Page Open activity
+        const pageOpenActivity = microflow.generatePageOpenCall (pageName, entityName)
+        microflow.addObjectToMicroflow (pageOpenActivity, 200, 0, lastActivity, Microflow.ConnectorPosition.Right,Microflow.ConnectorPosition.Left)
+        lastActivity = pageOpenActivity
+    }
 
     // END
     const endEvent = microflow.generateEndEvent("false");

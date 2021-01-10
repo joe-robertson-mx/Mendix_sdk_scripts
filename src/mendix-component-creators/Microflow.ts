@@ -30,6 +30,8 @@ export class Microflow {
 		this._inputParameterCurrentX = this._inputParameterCurrentX + this._inputParameterXOffset;
 		this._inputParameterCurrentY = this._inputParameterCurrentY + this._inputParameterYOffset;
 
+		console.log (parameterName)
+
 		let inputParameter = microflows.MicroflowParameterObject.create(this._model);
         inputParameter.relativeMiddlePoint = {"x":this._inputParameterCurrentX,"y":this._inputParameterCurrentY};
         inputParameter.size = {"width":30,"height":30};
